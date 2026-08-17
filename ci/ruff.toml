@@ -1,0 +1,49 @@
+# The rules statsbadge itself is checked against, minus the badge builtins: nothing linted
+# here runs on the badge. Both exclusions below are badge code, where `screen`, `shape`,
+# `vec2`, `rect` and `mat3` are the firmware's and the dialect is MicroPython.
+
+extend-exclude = [
+    "src/statsbadge_wildfires/badge",
+    "tools/shoot_firemap.py",
+]
+
+lint.select = [
+    "F",
+    "Q",
+    "W",
+    "E",
+    "B",
+    "COM",
+    "BLE",
+    "C4",
+    "ISC",
+    "ICN",
+    "PIE",
+    "RSE",
+    "RET",
+    "SLF",
+    "ARG"
+]
+
+lint.ignore = [
+    "E501",
+    "E402",
+    "COM812",
+    "ICN001"
+]
+
+lint.extend-select = ["UP"]
+
+[lint.per-file-ignores]
+# A source wraps whatever it reads, because a feed that is down has to degrade to a missing
+# field rather than take the collector down - that is the contract in sources/base.py.
+# `dt` is part of the sample() signature whether or not a source needs a rate.
+"src/statsbadge_wildfires/__init__.py" = ["BLE001", "ARG002"]
+
+# The tests drive the fetcher a step at a time, rather than starting its thread and waiting
+# to see what turns up, so they reach for what a caller would not. A stub standing in for
+# `feeds.fetch` takes the arguments it is called with whether or not the check reads them.
+"tests/*.py" = ["SLF001", "ARG001", "ARG005"]
+
+# Same reason: one fetch and then out, rather than a thread and a wait for it to land.
+"tools/capture_frames.py" = ["SLF001"]
