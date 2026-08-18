@@ -64,13 +64,18 @@ jobs:
 
       # The badge module ships inside the wheel and `statsbadge install` copies it onto the
       # badge. Left out of the build it is a page the app never draws.
+      #
+      # Read out of the archive rather than imported: importing the package pulls in
+      # statsbadge, which the entry point check installs without.
       - name: Check the badge module ships in the wheel
         run: |
-          /tmp/check/bin/python - <<'PY'
-          import statsbadge_wildfires, os
-          path = statsbadge_wildfires.Wildfires.badge_module
-          assert os.path.isfile(path), path
-          print("badge module:", path)
+          python - <<'PY'
+          import glob, zipfile
+          wheel = glob.glob("dist/*.whl")[0]
+          shipped = zipfile.ZipFile(wheel).namelist()
+          wanted = "statsbadge_wildfires/badge/firemap.py"
+          assert wanted in shipped, shipped
+          print("badge module:", wanted, "in", wheel)
           PY
 
       - uses: actions/upload-artifact@v7
