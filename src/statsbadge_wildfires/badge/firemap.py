@@ -68,8 +68,9 @@ RING_MIN_PX = 1.5
 CURSOR_ARM = 6
 # How far clear of the fire's dot the arms start.
 CURSOR_GAP = 3
-# Closer than this to the cursor, the location marker sits under the crosshair.
-HOME_CLEAR_PX = 10.0
+# Closer than this to the cursor, the location marker sits under the crosshair. Squared,
+# since the firmware's math has no hypot and the comparison does not need the root.
+HOME_CLEAR_PX2 = 10.0 * 10.0
 
 # Metres, since a fire filling the band is often a couple of kilometres across.
 BAR_STEPS = (100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000,
@@ -276,8 +277,10 @@ def _home(theme, view, home, marked=None):
     x, y = view.at(home[1], home[0])
     if not view.holds(x, y):
         return
-    if marked is not None and math.hypot(x - marked[0], y - marked[1]) < HOME_CLEAR_PX:
-        return
+    if marked is not None:
+        away, down = x - marked[0], y - marked[1]
+        if away * away + down * down < HOME_CLEAR_PX2:
+            return
     was = screen.clip
     screen.clip = view.box
     screen.pen = theme.accent_b
