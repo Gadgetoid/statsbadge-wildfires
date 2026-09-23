@@ -23,7 +23,7 @@ import os
 import threading
 import time
 
-from statsbadge.sources.base import Source
+from statsbadge.sources.base import PollingSource
 
 from . import feeds
 
@@ -36,7 +36,6 @@ INTERVAL = 900.0
 # A failure waits this long instead of the whole interval, a tethered laptop dropping its
 # connection being over in seconds.
 RETRY_AFTER = 120.0
-FETCH_POLL = 1.0
 
 # The last good set per target, kept so a badge switched on before the network is up has
 # something to draw.
@@ -51,7 +50,7 @@ KM_PER_DEGREE = 111.195
 MAX_RADIUS_KM = 5000.0
 
 
-class Wildfires(Source):
+class Wildfires(PollingSource):
     name = "wildfires"
     label = "Wildfires"
     provides = ("wildfires",)
@@ -124,27 +123,13 @@ class Wildfires(Source):
         self._targets = {}
         self._lock = threading.Lock()
         self._next = 0.0
-        self._fetcher = None
-        self._wake = threading.Event()
-        self._stop = threading.Event()
         self._read_settings()
 
     def start(self):
         """Restore the stored fires, then fetch on a thread."""
         with self._lock:
             self._fires = dict(self.store.get(STORED) or {})
-        if self._fetcher is None:
-            self._stop.clear()
-            self._fetcher = threading.Thread(target=self._fetch_loop, daemon=True,
-                                             name="statsbadge-wildfires")
-            self._fetcher.start()
-
-    def stop(self):
-        self._stop.set()
-        self._wake.set()
-        if self._fetcher is not None:
-            self._fetcher.join(timeout=3.0)
-            self._fetcher = None
+        super().start()
 
     def pages(self, instances):
         """Take the configured pages, and fetch for anywhere new.
@@ -168,7 +153,7 @@ class Wildfires(Source):
             self._targets = targets
         if changed:
             self._next = 0.0
-            self._wake.set()
+            self.wake()
 
     def configure(self, settings):
         """Take settings while running, and fetch again rather than waiting out the interval.
@@ -179,22 +164,12 @@ class Wildfires(Source):
         super().configure(settings)
         self._read_settings()
         self._next = 0.0
-        self._wake.set()
+        self.wake()
 
     def _read_settings(self):
-        try:
-            self.min_area = max(1.0, float(self.config.get("min_area") or 100))
-        except (TypeError, ValueError):
-            self.min_area = 100.0
-        try:
-            self.count = int(self.config.get("count") or 10)
-        except (TypeError, ValueError):
-            self.count = 10
-        self.count = max(1, min(20, self.count))
-        try:
-            self.merge = max(0.0, min(500.0, float(self.config.get("merge", 25) or 0)))
-        except (TypeError, ValueError):
-            self.merge = 25.0
+        self.min_area = float(self.config["min_area"])
+        self.count = int(self.config["count"])
+        self.merge = float(self.config["merge"])
 
     def sample(self, frame, dt):
         """What the fetcher brought back, ranked by distance and aged.
@@ -225,18 +200,7 @@ class Wildfires(Source):
                             if page["nearest"] is not None), default=None),
         }
 
-    def _fetch_loop(self):
-        while not self._stop.is_set():
-            try:
-                self._refresh()
-            except Exception as exc:
-                # The fetcher must not die, or the map would go on drawing the same set
-                # with nothing ever replacing it.
-                self.note_fault(exc)
-            self._wake.wait(FETCH_POLL)
-            self._wake.clear()
-
-    def _refresh(self):
+    def poll(self):
         if time.monotonic() < self._next:
             return
         with self._lock:
@@ -245,40 +209,33 @@ class Wildfires(Source):
             self._next = time.monotonic() + INTERVAL
             return
         found = {}
-        failed = None
+        failed = False
         # One fetch per distinct place and radius, so two pages watching one town cost one
         # request between them.
         boxes = {}
         for page_id, target in targets.items():
             try:
                 located = self.location(target)
-            except Exception as exc:
-                failed = exc
-                continue
-            if located is None:
-                continue
-            latitude, longitude, label = located
-            key = (round(latitude, 3), round(longitude, 3), target["radius"])
-            if key not in boxes:
-                try:
+                if located is None:
+                    self.note_ok(page_id)
+                    continue
+                latitude, longitude, label = located
+                key = (round(latitude, 3), round(longitude, 3), target["radius"])
+                if key not in boxes:
                     fires = self._box(latitude, longitude, target["radius"])
                     boxes[key] = {"fires": self._name(fires), "lat": latitude,
                                   "lon": longitude, "label": label}
-                except Exception as exc:
-                    failed = exc
-                    continue
-            found[page_id] = boxes[key]
+                found[page_id] = boxes[key]
+                self.note_ok(page_id)
+            except Exception as exc:  # noqa: BLE001
+                failed = True
+                self.note_fault(exc, key=page_id)
         if found:
             with self._lock:
                 self._fires = found
             # Kept for the next launch, not as a cache for this one.
             self.store.set(STORED, found)
-        if failed is not None:
-            self._next = time.monotonic() + RETRY_AFTER
-            self.note_fault(failed)
-            return
-        self._next = time.monotonic() + INTERVAL
-        self.note_ok()
+        self._next = time.monotonic() + (RETRY_AFTER if failed else INTERVAL)
 
     def _name(self, fires):
         """Give the burnt areas the feed did not name the nearest town to each.

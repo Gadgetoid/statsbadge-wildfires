@@ -15,7 +15,8 @@ it will be drawn at.
 import json
 import math
 import urllib.parse
-import urllib.request
+
+from statsbadge.sources import web
 
 # One acre in hectares. WFIGS reports acres, GWIS hectares, and the badge is given
 # hectares.
@@ -469,5 +470,4 @@ def _json(url):
 
 
 def _text(url):
-    with urllib.request.urlopen(url, timeout=TIMEOUT) as response:
-        return response.read().decode("utf-8", "replace")
+    return web.fetch_bytes(url, timeout=TIMEOUT).decode("utf-8", "replace")

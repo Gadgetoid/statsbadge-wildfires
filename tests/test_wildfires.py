@@ -426,7 +426,7 @@ def test_a_page_with_no_location_is_not_fetched_for():
     was = feeds.fetch
     try:
         feeds.fetch = catch
-        source._refresh()
+        source.poll()
     finally:
         feeds.fetch = was
     assert calls == [], calls
@@ -448,7 +448,7 @@ def test_two_pages_in_one_place_cost_one_fetch():
     was = feeds.fetch
     try:
         feeds.fetch = catch
-        source._refresh()
+        source.poll()
     finally:
         feeds.fetch = was
     assert len(calls) == 1, calls
