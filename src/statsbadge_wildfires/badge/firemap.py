@@ -483,6 +483,4 @@ def render(page, frame, _history, theme):
         _band(theme, mine, None, 0, 0, note=f"nothing burning near {where}")
 
 
-pages.EXTRA["firemap"] = render
-# The camera and the rings move between readings, so this page is drawn every frame.
-pages.ANIMATED.add("firemap")
+pages.register("firemap", render, api=1, animated=True)
