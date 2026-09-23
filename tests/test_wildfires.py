@@ -492,8 +492,7 @@ def test_the_declared_page_kind_matches_the_module_that_registers_it():
     import pathlib
     kind = Wildfires.badge_page["kind"]
     source = pathlib.Path(Wildfires.badge_module).read_text(encoding="utf-8")
-    assert f'pages.EXTRA["{kind}"]' in source, kind
-    assert f'ANIMATED.add("{kind}")' in source, kind
+    assert f'pages.register("{kind}", render, api=1, animated=True)' in source, kind
 
 
 @check
