@@ -309,11 +309,11 @@ def _fire(theme, view, state, fire, closing):
             screen.shape(burnt)
     # Held until the shape has faded up, so a fire is never unmarked.
     if closing < 0.8 and view.holds(x, y):
-        _cursor(view, fire, pen, x, y, 1.0 - max(0.0, (closing - 0.45) / 0.35))
+        _cursor(fire, pen, x, y, 1.0 - max(0.0, (closing - 0.45) / 0.35))
     screen.clip = was
 
 
-def _cursor(view, fire, pen, x, y, fade):
+def _cursor(fire, pen, x, y, fade):
     """A crosshair around the site, with rings leaving it.
 
     Where the camera is going while the fire is still a dot, and the spot on a fire the

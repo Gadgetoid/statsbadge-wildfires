@@ -233,7 +233,7 @@ def test_scouting_orders_by_distance_and_not_by_size():
     ]}
     was = feeds._json
     try:
-        feeds._json = lambda url: payload
+        feeds._json = lambda _url: payload
         rows = feeds._wfigs_scout({}, 100.0, (43.6135, -116.2035))
     finally:
         feeds._json = was
@@ -248,7 +248,7 @@ def test_a_fire_with_no_reported_origin_is_not_scouted():
     ]}
     was = feeds._json
     try:
-        feeds._json = lambda url: payload
+        feeds._json = lambda _url: payload
         rows = feeds._wfigs_scout({}, 100.0, (43.6, -116.2))
     finally:
         feeds._json = was
@@ -395,7 +395,7 @@ def test_the_box_widens_with_latitude():
     source = Wildfires({})
     boxes = {}
 
-    def catch(south, west, north, east, min_ha, home=None, want=10):
+    def catch(south, west, north, east, **_options):
         boxes["at"] = (south, west, north, east)
         return []
 
@@ -419,7 +419,7 @@ def test_a_page_with_no_location_is_not_fetched_for():
     source.pages([{"id": "p1", "radius": 500}])
     calls = []
 
-    def catch(*args, **kwargs):
+    def catch(*args, **_options):
         calls.append(args)
         return []
 
@@ -440,7 +440,7 @@ def test_two_pages_in_one_place_cost_one_fetch():
     source.pages([{"id": "p1", "radius": 500}, {"id": "p2", "radius": 500}])
     calls = []
 
-    def catch(south, west, north, east, min_ha, home=None, want=10):
+    def catch(south, west, *_box, **_options):
         calls.append((south, west))
         return [{"name": "x", "area": 900, "lon": -1.5, "lat": 53.5,
                  "span": [0.1, 0.1], "at": None}]
