@@ -10,7 +10,7 @@ license = "MIT"
 requires-python = ">=3.11"
 # 2.1 is where Source.location and the badge-wide place setting land: this page is set to a
 # location and has nothing to draw without one.
-dependencies = ["statsbadge>=2.1.0"]
+dependencies = ["statsbadge>=3.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/pimoroni/statsbadge-wildfires"
